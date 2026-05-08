@@ -4,6 +4,12 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
+from torchvision import transforms
+
+transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.5,), std=(0.5,))
+])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_dataset = MNIST('~/data', train=True, download=True, transform=transform)
@@ -12,7 +18,7 @@ data_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 embedding_dim = 10 #what
 num_class = 10 #what
 latent_dim = 100 #what
-img_shape = 600*800
+img_shape = 28*28 #600*800
 
 class DCGAN_gen(nn.Module):
     def __init__(self):
@@ -113,7 +119,21 @@ def generator_train_step(fake_data, fake_labels):
     g_optimizer.step()
     return error
 
+from torchvision.utils import make_grid
+from torch_snippets import show
+import matplotlib.pyplot as plt
+import os
 
+def plot_samples_2d():
+    z = torch.randn(64, 100, 1, 1).to(device)
+    ordered_labels = torch.tensor([i % 10 for i in range(64)]).to(device)
+    sample_images = generator_DCGAN(z, ordered_labels).data.cpu()
+    grid = make_grid(sample_images, nrow=8, normalize=True)
+    show(grid.cpu().detach().permute(1,2,0), sz=5)
+    os.makedirs("./Outputs", exist_ok=True)
+
+
+######## RUNNING THE TRAINING LOOP ########
 num_epochs = 40 
 for epoch in range(num_epochs):
     print(f"Epoch {epoch+1}/{num_epochs}")
@@ -134,3 +154,7 @@ for epoch in range(num_epochs):
         fake_labels = torch.randint(0, num_class, (n_images,)).to(device)
         fake_data = generator_DCGAN(noise_2d(n_images), fake_labels).to(device)
         g_loss = generator_train_step(fake_data, fake_labels)
+
+        if (epoch+1) % 5 == 0:
+            plot_samples_2d()
+            print(f"Epoch: {epoch+1}")
