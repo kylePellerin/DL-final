@@ -3,9 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-train_dataset = torch.load("./data/images")
+train_dataset = MNIST('~/data', train=True, download=True, transform=transform)
 data_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 
 embedding_dim = 10 #what
@@ -133,7 +134,3 @@ for epoch in range(num_epochs):
         fake_labels = torch.randint(0, num_class, (n_images,)).to(device)
         fake_data = generator_DCGAN(noise_2d(n_images), fake_labels).to(device)
         g_loss = generator_train_step(fake_data, fake_labels)
-
-    if (epoch+1) % 5 == 0:
-        plot_samples_2d()
-        print(f"Epoch: {epoch+1}")
