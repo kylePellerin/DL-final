@@ -87,47 +87,8 @@ class DCGAN_disc(nn.Module):
         validity = self.model(x)
         return validity.view(-1, 1) # flatten to (batch, 1)
 
-# Initialize Models
-generator_DCGAN = DCGAN_gen().to(device)
-discriminator_DCGAN = DCGAN_disc().to(device)
-
-d_optimizer = optim.Adam(discriminator_DCGAN.parameters(), lr=0.0002, betas=(0.5, 0.999))
-g_optimizer = optim.Adam(generator_DCGAN.parameters(), lr=0.0002, betas=(0.5, 0.999))
-loss_fn = nn.BCELoss()
-
-def noise_2d(batch_size):
-    return torch.randn(batch_size, latent_dim, 1, 1, device=device)
-
-######## RUNNING THE TRAINING LOOP ########
-num_epochs = 40 
-for epoch in range(num_epochs):
-    for i, (images, class_labels, country_labels, major_labels) in enumerate(dataloader):
-        n_images = len(images)
-        
-        real_data = images.to(device) # Ensure images are normalized to [-1, 1] in your dataset!
-        real_conditions = torch.cat([class_labels, country_labels, major_labels], dim=1).to(device)
-        
-        discriminator_DCGAN.zero_grad()
-        
-        pred_real = discriminator_DCGAN(real_data, real_conditions)
-        loss_real = loss_fn(pred_real, torch.ones(n_images, 1).to(device))
-        
-        # Fake loss
-        z = noise_2d(n_images)
-        fake_data = generator_DCGAN(z, real_conditions)
-        pred_fake = discriminator_DCGAN(fake_data.detach(), real_conditions)
-        loss_fake = loss_fn(pred_fake, torch.zeros(n_images, 1).to(device))
-        
-        d_loss = loss_real + loss_fake
-        d_loss.backward()
-        d_optimizer.step()
+import matplotlib.pyplot as plt
+from torchvision.utils import make_grid
 
 
-        g_optimizer.zero_grad()
-        pred_fake_gen = discriminator_DCGAN(fake_data, real_conditions)
-        g_loss = loss_fn(pred_fake_gen, torch.ones(n_images, 1).to(device))
-        
-        g_loss.backward()
-        g_optimizer.step()
 
-    print(f"Epoch {epoch+1}/{num_epochs} | D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}")
