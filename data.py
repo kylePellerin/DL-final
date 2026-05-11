@@ -7,6 +7,9 @@ from torch.utils.data import Dataset, DataLoader
 import os 
 import sys
 import glob
+from PIL import Image 
+import numpy as np
+import torchvision.transforms as T
 
 countries_mapping = {
     "N/A": 0,
@@ -104,10 +107,91 @@ majors_mapping = {
     "Visual Arts": 41
 }
 
-
 class_mapping = {
     "2029": 0,
     "2028": 1,
     "2027": 2,
     "2026": 3,
 }
+
+
+"""Paths"""
+image_dir = "./data/images/*"
+csv_path = "./data/data_info.csv"
+
+def load_data(image_dir, csv_path):
+    image_paths = glob.glob(image_dir)
+    data_info = pd.read_csv(csv_path)
+
+    data_dict = {} 
+
+    # Iterate through the CSV and build the data dictionary
+    for index, row in data_info.iterrows():
+        image_id = row["Image ID"]
+        class_label = row["ClassVals"]
+        major_labels = row["MajorVals"]
+        country_labels = row["CountryVals"]
+        # print(f"Image ID: {image_id}, Class Label: {class_label}, Major Labels: {major_labels}, Country Labels: {country_labels}")
+
+        if "," in major_labels:
+            major_labels = major_labels.split(", ")
+            major_labels = [int(label) for label in major_labels]
+        else:        
+            major_labels = [int(major_labels)]
+
+        image_path = f"./data/images/{image_id}"
+
+        data_dict[image_path] = {
+            "class_label": int(class_label),
+            "major_labels": major_labels,
+            "country_labels": int(country_labels),
+        }
+        
+        if f"./data/images/{image_id}" not in image_paths:
+            print(f"Image ID: {image_id} not found in image paths")
+
+    return data_dict
+
+def process_data(data_dict, device, transforms):
+    for key, value in data_dict.items():
+        img = Image.open(key).convert('RGB')          
+        img_tensor = transforms(img).to(device)   
+
+        zeros_class = torch.zeros(4, dtype=torch.float32).to(device)
+        zeros_country = torch.zeros(48, dtype=torch.float32).to(device)
+        zeros_major = torch.zeros(42, dtype=torch.float32).to(device)
+
+        class_label_one_hot = zeros_class.clone()
+        class_label_one_hot[value['class_label']] = 1.0
+        country_label_one_hot = zeros_country.clone()
+        country_label_one_hot[value['country_labels']] = 1.0   
+        major_label_one_hot = zeros_major.clone() #this shoudl have been outside loop
+        for major_label in value['major_labels']:
+            major_label_one_hot[major_label] = 1.0        
+
+        # store in dict 
+        data_dict[key]['image_tensor'] = img_tensor
+        data_dict[key]['class_label_one_hot'] = class_label_one_hot
+        data_dict[key]['country_label_one_hot'] = country_label_one_hot
+        data_dict[key]['major_label_one_hot'] = major_label_one_hot
+
+    return data_dict
+    
+class BowdoinData(Dataset):
+    def __init__(self, data_dict):
+        self.data_dict = data_dict
+        self.image_paths = list(data_dict.keys())
+        
+    def __len__(self):
+        return len(self.image_paths)
+    
+    def __getitem__(self, idx):
+        image_path = self.image_paths[idx]
+        data = self.data_dict[image_path]
+        return data['image_tensor'], data['class_label_one_hot'], data['country_label_one_hot'], data['major_label_one_hot']
+
+"""
+Statistics for the Images
+Mean: tensor([0.5173, 0.4501, 0.4103])
+Std: tensor([0.2840, 0.2643, 0.2671])
+"""
