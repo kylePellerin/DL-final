@@ -15,7 +15,7 @@ image_dir = "./data/images/*"
 csv_path = "./data/data_info.csv"
 
 num_epochs = 200
-batch_size = 5
+batch_size = 64
 
 save_dir = "./Output_Classifier/"
 os.makedirs(save_dir, exist_ok=True)

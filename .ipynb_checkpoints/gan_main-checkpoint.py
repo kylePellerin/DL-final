@@ -21,7 +21,7 @@ condition_dim = 94 # 4 (Class) + 48 (Country) + 42 (Major)
 channels = 3
 img_size = (800, 600)
 num_epochs = 500
-batch_size = 48
+batch_size = 64
 
 save_dir = "./Output_GAN/"
 os.makedirs(save_dir, exist_ok=True)

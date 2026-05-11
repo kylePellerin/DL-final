@@ -19,42 +19,40 @@ class DCGAN_gen(nn.Module):
     def __init__(self, latent_dim=latent_dim, condition_dim=condition_dim, channels=channels):
         super().__init__()
 
-        in_ch = latent_dim + condition_dim # 256 (noise) + 94 (condition) = 350
+        in_ch = latent_dim + condition_dim  # 350
 
-        def block(in_c, out_c, k, s, p):
+        def block(in_c, out_c):
             return nn.Sequential(
-                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False), 
-                nn.Conv2d(in_c, out_c, kernel_size=3, stride=1, padding=1, bias=False), 
-                # nn.ConvTranspose2d(in_c, out_c, kernel_size=k, stride=s, padding=p, bias=False),
-                nn.BatchNorm2d(out_c),
-                nn.LeakyReLU(0.2, inplace=True)
+                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+                nn.Conv2d(in_c, out_c, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.InstanceNorm2d(out_c, affine=True),  # FIX 1: was BatchNorm2d
+                nn.LeakyReLU(0.2, inplace=True),
             )
 
         self.model = nn.Sequential(
-            # block(in_ch, 512, k=(6, 4), s=1, p=0),   # (batch, 512, 6, 4)
-            nn.ConvTranspose2d(in_ch, 2048, kernel_size=(6, 4), stride=1, padding=0, bias=False), 
-            nn.BatchNorm2d(2048), 
-            nn.ReLU(True),
-            block(2048, 1024, k=4, s=2, p=1),        # (batch, 256, 12, 8)
-            block(1024, 512, k=4, s=2, p=1),        # (batch, 256, 12, 8)
-            block(512, 256, k=4, s=2, p=1),        # (batch, 256, 12, 8)
-            block(256, 128, k=4, s=2, p=1),        # (batch, 128, 24, 16)
-            block(128, 64, k=4, s=2, p=1),         # (batch, 64, 48, 32)
-            block(64, 32, k=4, s=2, p=1),          # (batch, 32, 96, 64)
-            block(32, 16, k=4, s=2, p=1),          # (batch, 16, 192, 128)
-            block(16, 8, k=4, s=2, p=1),           # (batch, 8, 384, 256)
-            # nn.ConvTranspose2d(8, channels, kernel_size=4, stride=2, padding=1, bias=False), # (batch, 3, 768, 512)
+            # (B, 350, 1, 1) → (B, 2048, 6, 4)
+            nn.ConvTranspose2d(in_ch, 2048, kernel_size=(6, 4), stride=1, padding=0, bias=False),
+            nn.InstanceNorm2d(2048, affine=True),        # FIX 1
+            nn.LeakyReLU(0.2, inplace=True),
+
+            block(2048, 1024),  # → (B, 1024, 12, 8)
+            block(1024,  512),  # → (B,  512, 24, 16)
+            block( 512,  256),  # → (B,  256, 48, 32)
+            block( 256,  128),  # → (B,  128, 96, 64)
+            block( 128,   64),  # → (B,   64, 192, 128)
+            block(  64,   32),  # → (B,   32, 384, 256)
+
+            # Final → (B, 3, 768, 512) then interpolate to (800, 600)
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(8, channels, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.Tanh()
+            nn.Conv2d(32, channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Tanh(),
         )
 
     def forward(self, noise, combined_labels):
-        # noise: (B, latent_dim, 1, 1) 
         c = combined_labels.view(combined_labels.size(0), -1, 1, 1)
-        x = torch.cat([noise, c], dim=1) # (B, latent_dim + condition_dim, 1, 1)
-        x = self.model(x) # (B, 3, 768, 512)
-        x = F.interpolate(x, size=img_size, mode='bilinear', align_corners=False) # Resize to (B, 3, 800, 600)
+        x = torch.cat([noise, c], dim=1)
+        x = self.model(x)                                          # (B, 3, 768, 512)
+        x = F.interpolate(x, size=img_size, mode='bilinear', align_corners=False)  # (B, 3, 800, 600)
         return x
 
 
@@ -66,11 +64,11 @@ class DCGAN_disc(nn.Module):
         in_ch = channels + condition_dim # 3 (image) + 94 (condition) = 97
 
         def block(in_c, out_c, bn=True):
-            layers = [nn.Conv2d(in_c, out_c, kernel_size=4, stride=2, padding=1, bias=False)]
+            layers = [nn.utils.spectral_norm(nn.Conv2d(in_c, out_c, kernel_size=4, stride=2, padding=1, bias=False))]
             if bn:
                 layers.append(nn.BatchNorm2d(out_c))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
-            layers.append(nn.Dropout2d(0.2))
+            layers.append(nn.Dropout2d(0.4))
             return nn.Sequential(*layers)
 
         self.features = nn.Sequential(
