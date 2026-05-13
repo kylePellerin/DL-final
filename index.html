@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Face Generator</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 0 1rem; }
+    h1 { font-size: 1.2rem; margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: bold; }
+    select { width: 100%; padding: 0.4rem; margin-bottom: 1rem; font-size: 0.9rem; }
+    button { padding: 0.5rem 1.2rem; font-size: 0.9rem; cursor: pointer; }
+    #output { margin-top: 1.5rem; }
+    #output img { width: 100%; border: 1px solid #ccc; }
+    #status { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Face Generator</h1>
+
+  <label>Class Year</label>
+  <select id="sel-class"></select>
+
+  <label>Country</label>
+  <select id="sel-country"></select>
+
+  <label>Major</label>
+  <select id="sel-major"></select>
+
+  <button onclick="generate()">Generate</button>
+
+  <div id="output">
+    <div id="status"></div>
+    <img id="result" src="" alt="" style="display:none"/>
+  </div>
+
+  <script>
+    async function loadMappings() {
+      const res = await fetch('/mappings');
+      const data = await res.json();
+      for (const [id, mapping] of [
+        ['sel-class',   data.class],
+        ['sel-country', data.country],
+        ['sel-major',   data.major],
+      ]) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        Object.entries(mapping)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .forEach(([idx, name]) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = name;
+            sel.appendChild(opt);
+          });
+      }
+    }
+
+    loadMappings();
+
+    async function generate() {
+      const status = document.getElementById('status');
+      const img = document.getElementById('result');
+
+      status.textContent = 'Generating...';
+      img.style.display = 'none';
+
+      const payload = {
+        class_idx:   parseInt(document.getElementById('sel-class').value),
+        country_idx: parseInt(document.getElementById('sel-country').value),
+        major_idx:   parseInt(document.getElementById('sel-major').value),
+      };
+
+      try {
+        const res = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+        const blob = await res.blob();
+        img.src = URL.createObjectURL(blob);
+        img.style.display = 'block';
+        status.textContent = '';
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
