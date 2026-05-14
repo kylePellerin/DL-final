@@ -17,6 +17,7 @@
 <body>
   <h1>Face Generator</h1>
 
+  <label>Input your attributes, get a face!</label>
   <label>Class Year</label>
   <select id="sel-class"></select>
 
@@ -32,6 +33,17 @@
     <div id="status"></div>
     <img id="result" src="" alt="" style="display:none"/>
   </div>
+
+  <label>Or upload your image, and we'll guess your attributes!</label>
+  <input type="file" id="file-input" accept="image/*"/>
+
+  <button onclick="generate()">Generate</button>
+
+  <div id="output">
+    <div id="status"></div>
+    <img id="result" src="" alt="" style="display:none"/>
+  </div>
+
 
   <script>
     async function loadMappings() {
