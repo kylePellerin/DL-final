@@ -46,6 +46,12 @@ def get_major_multihot(major_idx, num_majors=42):
 # ==========================================
 # Routes
 # ==========================================
+
+@app.route("/")
+def index():
+    return send_file("index.html")
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.json
@@ -71,7 +77,7 @@ def generate():
 
     # Many GANs expect the condition vector to have spatial dimensions [1, 94, 1, 1]
     # We add unsqueeze just in case your model forward pass doesn't do it automatically
-    combined_labels = combined_labels.unsqueeze(2).unsqueeze(3)
+    # combined_labels = combined_labels.unsqueeze(2).unsqueeze(3)
 
     with torch.no_grad():
         # Pass to generator
@@ -96,10 +102,6 @@ inference_transforms = T.Compose([
     T.ToTensor(),
     T.Normalize((0.5173, 0.4501, 0.4103), (0.2840, 0.2643, 0.2671))
 ])
-
-@app.route("/")
-def index():
-    return send_file("index.html")
 
 @app.route("/mappings")
 def mappings():
