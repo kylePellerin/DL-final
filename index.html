@@ -2,66 +2,178 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Face Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bowdoin AI Tools</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 0 1rem; }
-    h1 { font-size: 1.2rem; margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; font-weight: bold; }
-    select { width: 100%; padding: 0.4rem; margin-bottom: 1rem; font-size: 0.9rem; }
-    button { padding: 0.5rem 1.2rem; font-size: 0.9rem; cursor: pointer; }
-    #output { margin-top: 1.5rem; }
-    #output img { width: 100%; border: 1px solid #ccc; }
-    #status { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+    :root {
+      --primary: #000000;
+      --accent: #505050;
+      --bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --border: #e0e0e0;
+      --text: #333333;
+    }
+
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 600px; 
+      margin: 0 auto; 
+      padding: 2rem 1rem; 
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+
+    h1 { 
+      font-size: 1.5rem; 
+      margin-top: 0;
+      margin-bottom: 1.5rem; 
+      border-bottom: 2px solid var(--primary);
+      display: inline-block;
+      padding-bottom: 4px;
+    }
+
+    label { 
+      display: block; 
+      margin-bottom: 0.5rem; 
+      font-size: 0.85rem; 
+      font-weight: 600; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    select, input[type="file"] { 
+      width: 100%; 
+      padding: 0.6rem; 
+      margin-bottom: 1.2rem; 
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button { 
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.8rem; 
+      font-size: 1rem; 
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer; 
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    .output-box { 
+      margin-top: 1.5rem; 
+      padding: 1rem; 
+      border-radius: 8px; 
+      background: #fdfdfd; 
+      border: 1px dashed var(--border);
+      min-height: 40px; 
+      text-align: center;
+    }
+
+    img { 
+      width: 100%; 
+      border-radius: 8px;
+      margin-top: 10px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-text { 
+      font-size: 0.95rem; 
+      color: var(--text); 
+    }
+
+    .prediction-results {
+      text-align: left;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
-  <h1>Face Generator</h1>
 
-  <label>Class Year</label>
-  <select id="sel-class"></select>
+  <div class="card">
+    <h1>Face Generator</h1>
+    
+    <label for="sel-class">Class Year</label>
+    <select id="sel-class"></select>
 
-  <label>Country</label>
-  <select id="sel-country"></select>
+    <label for="sel-country">Country</label>
+    <select id="sel-country"></select>
 
-  <label>Major</label>
-  <select id="sel-major"></select>
+    <label for="sel-major">Major</label>
+    <select id="sel-major"></select>
 
-  <button onclick="generate()">Generate</button>
+    <button onclick="generate()">Generate Face</button>
 
-  <div id="output">
-    <div id="status"></div>
-    <img id="result" src="" alt="" style="display:none"/>
+    <div class="output-box">
+      <div id="gen-status" class="status-text">Select attributes above</div>
+      <img id="gen-result" src="" alt="" style="display:none"/>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>Attribute Classifier</h1>
+    <label>Upload a portrait</label>
+    <input type="file" id="file-input" accept="image/*"/>
+
+    <button onclick="findAttributes()">Analyze My Image</button>
+
+    <div class="output-box">
+      <div id="analyze-status" class="status-text">Ready for analysis</div>
+    </div>
   </div>
 
   <script>
+    // Logic remains identical to your working version
     async function loadMappings() {
-      const res = await fetch('/mappings');
-      const data = await res.json();
-      for (const [id, mapping] of [
-        ['sel-class',   data.class],
-        ['sel-country', data.country],
-        ['sel-major',   data.major],
-      ]) {
-        const sel = document.getElementById(id);
-        sel.innerHTML = '';
-        Object.entries(mapping)
-          .sort((a, b) => Number(a[0]) - Number(b[0]))
-          .forEach(([idx, name]) => {
-            const opt = document.createElement('option');
-            opt.value = idx;
-            opt.textContent = name;
-            sel.appendChild(opt);
-          });
+      try {
+        const res = await fetch('/mappings');
+        const data = await res.json();
+        const config = [
+          ['sel-class',   data.class],
+          ['sel-country', data.country],
+          ['sel-major',   data.major],
+        ];
+
+        config.forEach(([id, mapping]) => {
+          const sel = document.getElementById(id);
+          sel.innerHTML = '';
+          Object.entries(mapping)
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .forEach(([idx, name]) => {
+              const opt = document.createElement('option');
+              opt.value = idx;
+              opt.textContent = name;
+              sel.appendChild(opt);
+            });
+        });
+      } catch (err) {
+        console.error("Mapping load failed:", err);
       }
     }
 
     loadMappings();
 
     async function generate() {
-      const status = document.getElementById('status');
-      const img = document.getElementById('result');
-
-      status.textContent = 'Generating...';
+      const status = document.getElementById('gen-status');
+      const img = document.getElementById('gen-result');
+      status.textContent = 'Processing request...';
       img.style.display = 'none';
 
       const payload = {
@@ -76,13 +188,47 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
+        if (!res.ok) throw new Error('Generation failed');
         const blob = await res.blob();
         img.src = URL.createObjectURL(blob);
         img.style.display = 'block';
         status.textContent = '';
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function findAttributes() {
+      const status = document.getElementById('analyze-status');
+      const fileInput = document.getElementById('file-input');
+
+      if (fileInput.files.length === 0) {
+        status.textContent = 'Please select an image first.';
+        return;
+      }
+
+      status.textContent = 'Running classification...';
+      const formData = new FormData();
+      formData.append('image', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+        const data = await res.json();
+        
+        status.innerHTML = `
+          <div class="prediction-results">
+            <strong>Predictions:</strong><br>
+            • Class Year: ${data.class}<br>
+            • Country: ${data.country}<br>
+            • Major: ${data.major}
+          </div>
+        `;
       } catch (err) {
         status.textContent = `Error: ${err.message}`;
       }
