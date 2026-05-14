@@ -28,26 +28,14 @@ model.eval()
 generator = DCGAN_gen().to(device)
 
 # Load the raw state_dict
-state_dict = torch.load("./1000_generator_DCGAN.pth", map_location=device)
+state_dict = torch.load("1000_generator_DCGAN.pth", map_location=device)
 
 # Create a new state_dict without the "model." prefix
-new_state_dict = OrderedDict()
-for k, v in state_dict.items():
-    if k.startswith('model.'):
-        name = k[6:] # Remove the 'model.' prefix
-    else:
-        name = k
-    new_state_dict[name] = v
-
-# Load the cleaned dictionary
 try:
-    generator.load_state_dict(new_state_dict)
-    print("✓ GAN weights loaded successfully after prefix cleaning.")
-except RuntimeError as e:
-    print(f"Still having trouble: {e}")
-    generator.load_state_dict(new_state_dict, strict=False)
-    print("⚠ Loaded GAN weights with strict=False (some layers may be missing).")
-generator.eval()
+    generator.load_state_dict(state_dict, strict=False)
+    print("✓ GAN weights loaded successfully.")
+except Exception as e:
+    print(f"Error loading GAN: {e}")
 
 def get_major_multihot(major_idx, num_majors=42):
     vec = torch.zeros(num_majors)
