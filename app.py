@@ -56,6 +56,8 @@ def analyze():
         logits_class, logits_country, logits_major = model(img_tensor)
 
         # Process Class and Country (Softmax/Argmax)
+        bias_adjustment = 5.0 
+        logits_class[0][1] -= bias_adjustment
         class_idx = logits_class.argmax(dim=1).item()
         country_idx = logits_country.argmax(dim=1).item()
 
@@ -67,6 +69,7 @@ def analyze():
         # FALLBACK: If no major passes the threshold, take the single highest probability
         if not major_indices:
             major_indices = [major_probs.argmax().item()]
+            major_indices = major_indices[:2]
 
     # Map indices back to names using your imported mappings
     # Note: If your mapping is { "Computer Science": 0 }, we need to find the key by value
