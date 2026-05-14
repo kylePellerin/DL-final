@@ -61,7 +61,12 @@ def analyze():
 
         # Process Majors (Multi-label thresholding)
         major_probs = torch.sigmoid(logits_major[0])
-        major_indices = (major_probs > 0.5).nonzero(as_tuple=True)[0].tolist()
+        threshold = 0.25
+        major_indices = (major_probs > threshold).nonzero(as_tuple=True)[0].tolist()
+        
+        # FALLBACK: If no major passes the threshold, take the single highest probability
+        if not major_indices:
+            major_indices = [major_probs.argmax().item()]
 
     # Map indices back to names using your imported mappings
     # Note: If your mapping is { "Computer Science": 0 }, we need to find the key by value
