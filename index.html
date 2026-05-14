@@ -37,7 +37,7 @@
   <label>Or upload your image, and we'll guess your attributes!</label>
   <input type="file" id="file-input" accept="image/*"/>
 
-  <button onclick="generate()">Generate</button>
+  <button onclick="findAttributes()">Find Attributes</button>
 
   <div id="output">
     <div id="status"></div>
@@ -95,6 +95,37 @@
         img.src = URL.createObjectURL(blob);
         img.style.display = 'block';
         status.textContent = '';
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function findAttributes() {
+      const status = document.getElementById('status');
+      const img = document.getElementById('result');
+      const fileInput = document.getElementById('file-input');
+
+      if (fileInput.files.length === 0) {
+        status.textContent = 'Please select an image to upload.';
+        return;
+      }
+
+      status.textContent = 'Analyzing...';
+      img.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('image', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+        const data = await res.json();
+        status.textContent = `Predicted Attributes - Class Year: ${data.class}, Country: ${data.country}, Major: ${data.major}`;
       } catch (err) {
         status.textContent = `Error: ${err.message}`;
       }
