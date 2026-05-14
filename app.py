@@ -28,7 +28,7 @@ model.eval()
 generator = DCGAN_gen().to(device)
 
 # Load the raw state_dict
-state_dict = torch.load("1000_generator_DCGAN.pth", map_location=device)
+state_dict = torch.load("celeba_generator_final.pth", map_location=device)
 
 # Create a new state_dict without the "model." prefix
 try:
